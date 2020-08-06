@@ -38,5 +38,54 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
+########################
+# create our own functions----一般设置些简单条件创造想要的数据
 pacman::p_load(tidyverse,FRACTION,lubridate)
+EvenOdd=function(x=2){ if((x%%2)==0){return('Even')} else {return('Odd')}} #奇偶判定
+AddFunc = function(x=2,y=2){x+y}
+DoubleAdd=function(x=2,y=2){sum=AddFunc(x,y) return(2*sum)}  # Nested function
+
+#Vectorising a Function-----创造函数后，我们往往需要直接判断一列（vector)的情况，而不是单个元素
+lapply()
+tapply() #avoid using loop
+rowMeans()
+colMeans() #this two example also could create a vector, notice"s"
+
+x[is.na(x)]=0  #subsetting also can help vectorize a function/ or use lookup
+#subsetting example
+emp=c('XX','L','DM','SE','SSE')
+emp=sample(emp,1000000,replace=T)
+designation_employees=function(emp){ 
+for(i in 1:length(emp)){ 
+if (emp[i]=="DM"){emp[i]="Delivery Manager"
+} else if (emp[i]=="L"){emp[i]="Lead"
+} else if (emp[i]=="SFE"){emp[i]="Snr.Soft.Eng."
+} else if(emp[i]=="SE"){emp[i]="Soft.Eng"
+} else {emp[i]="Intern/Trainee"}
+}emp}   ##such a heavy job!
+#lookup tables
+designation_employee3= function(emp){
+result= c("DM"="Delivery Manager","L"="Lead",
+"SFE"="Snr.Soft.Eng.","SE"="Soft.Eng","xx"="Intern/Trainee")
+unname(result[emp])}
+benchmark(designation_employees3(emp),replications=10)
+
+##use mapply&vectorize
+mapply(Function,...,MoreArgs=NULL,SIMPLIFY=TRUE, USE.NAMES=TRUE) #use mapply
+benchmark(mapply(designation_employees,emp))
+
+vec_designation_emp=Vectorize(designation_employees,c('emp'))
+benchmark(vec_designation_emp(emp))
+
+#Profiling Code
+system.time() #to get the amount of time taken to evaluate an expression 即用来评估效率
+install.packages('rbenchmark') #for comparing commands
+install.packages('microbenchmark')#for high precision measurements
+Rprof()
+summaryRprof()  ## for investigate larger chunks of code such as lm()
+
+
+
+
+
 
