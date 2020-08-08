@@ -84,6 +84,56 @@ install.packages('microbenchmark')#for high precision measurements
 Rprof()
 summaryRprof()  ## for investigate larger chunks of code such as lm()
 
+####### Wide&Long Data------把不同列转为不同行
+#pipe fuction-管道函数
+%>%  # 将左边的结果传递到右边，一般右边是一个函数
+%<>% #也是将左边的结果传递给右边，但是这个操作符会将最后的结果返回给最开始的变量。
+%T>% #将左边的结果传递到右边，但返回原始的结果，or是返回上一级结果。
+%$%  #左边一般不是变量，而是数据框or列表
+%in% #匹配，相当于R中的match函数，左边的元素在右边的向量中是否存在，返回TRUE OR FALSE
+#解决column名称中”X2016“分开问题
+separate(Year,into=c("x","Year"),sep="X") %>% select(-x) %>% mutate(Year=as.numeric(Year))
+f1=read.csv('f1.csv',check.names = F) #another method
+#convert to a long data format
+gather(df_to_reshape,new_col_key,new_col_value,cols_to_get_values,args(na.rm=FALSE,convert=FALSE))
+f1New=gather(f1,'year','count'2:ncol(f1))
+head(f1New) 
+saplly(f1New,class) #看变量格式，以上的公式里year格式为”character"
+f1New=f1%>%gather('year','count',2:ncol(f1),convert=T) #这种情况year格式为“integer”
+f1New=f1%>%gather('year','count',2:ncol(f1),convert=T)%>%rename('categories'=Variables)%>%arrange(categories) #重命名+排序
+
+###### Date&Time
+Sys.time() #看系统时间
+class(Sys.time())
+Sys.Date() #只显示年月日
+class(Sys.Date)
+Sys.timezone() #时区
+dates=c("March 27,1987","June 11,1960") #character type
+Newdates=as.Date(dates,format="%B,%d,%Y") #转换格式必须要这种格式
+
+timeNow='13-02-2018 9:20' #格式 character
+timeNow_tz = dmy_hm(timeNow) #更改成功
+timeNow_tz=force_tz(time_tz,"Asia/Kuala_Lumpur") #change timezone
+with_tz(time_tz,"Asia/KOLKATA" #convert to desired time zone
+
+year(),month(),wday(),hour(),minute(),second() #显示年月日等
+
+# Work with the inerval
+time1=force_tz(time_tz,"Asia/Kuala_Lumpur") #确保时区是相同的
+time2=force_tz(time_tz,"Asia/Kuala_Lumpur")
+interval=interval(time2,time1)  #create an interval
+interval/ddays(1) #days
+interval/dhours(1) #hour
+interval/weeks(1)  #weeks
+interval/dyears(1) #years
+
+
+
+
+
+
+
+
 
 
 
