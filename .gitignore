@@ -127,6 +127,77 @@ interval/dhours(1) #hour
 interval/weeks(1)  #weeks
 interval/dyears(1) #years
 
+####### 练习 两张表“Lekagul Sensor Data" and "coordinates"
+pacman::p_load(tidyverse,lubridate)
+file1 = 'Lekagul Sensor Data.csv'
+file2 = 'coordinates.csv'
+data = read.csv(file1, stringsAsFactor = F) #拒绝分类
+coordinates = read.csv(file2, stringsAsFactor = F)
+lapply(list(data, coordinates), str)
+data = data %>%rename(FromTime = Timestamp,FromGate = gate.name,Vehicle = car.type,ID = car.id) #重命名
+data$FromTime = dmy_hm(data$FromTime) #correct data types
+data[, c('FromGate', 'Vehicle')] = lapply(data[, c('FromGate', 'Vehicle')], factor)#设置分类
+data_unique = data%>%distinct() #去除重复值
+data_unique = data_unique%>%mutate(SecondsSpent = interval(FromTime,ToTime)/dseconds(1)) #添加新的列并计算时间区间
+
+######画图——ggplot2
+#fundamental factors: Data, Mapping(映射),Geometric(几何对象),Scale(标尺),
+#Statistics,Coordinante(坐标系统),Layer(图层),Facet(分面),Theme(主题)
+p<-ggplot(data=df,mapping=aes(x=col,t=col,shape=col,colour=col))#shape可以将某元素反应到形状上
+p+geom_point() #散点图
+p<-ggplot(df)
+p+geom_point(aes(x=col,t=col,shape=col,colour=col)) #与之前的两步结果一样
+ggplot(df)+geom_histogram(aes(x=col,fill=col),position="col") #直方图，其中fill为填充颜色，position为分为side by side
+ggplot()+geom_bar(aes(x=c(LETTERS[1:3]),y=1:3), stat="identity") #柱状图 stat使按照指定高度画图
+ggplot()+geom_density(aes(x=col, colour=col,fill=col)) #密度函数图
+ggplot(small)+geom_boxplot(aes(x=cut, y=price,fill=color)) #箱式图
+geom_abline 	geom_area 	
+geom_bar 		geom_bin2d
+geom_blank 		geom_boxplot 	
+geom_contour 	geom_crossbar
+geom_density 	geom_density2d 	
+geom_dotplot 	geom_errorbar
+geom_errorbarh 	geom_freqpoly 	
+geom_hex 		geom_histogram
+geom_hline 		geom_jitter 	
+geom_line 		geom_linerange
+geom_map 		geom_path 	
+geom_point 		geom_pointrange
+geom_polygon 	geom_quantile 	
+geom_raster 	geom_rect
+geom_ribbon 	geom_rug 	
+geom_segment 	geom_smooth
+geom_step 		geom_text 	
+geom_tile 		geom_violin
+geom_vline
+
+ggplot(small)+geom_point(aes(x=carat, y=price, shape=cut, colour=color)
+)+scale_y_log10()+scale_colour_manual(values=rainbow(7))  #通过scale进行控制
+
+ggplot(small, aes(x=carat, y=price))+geom_point()+scale_y_log10()+stat_smooth() #对原始数据进行计算并加一条回归线
+stat_abline       stat_contour      stat_identity     stat_summary
+stat_bin          stat_density      stat_qq           stat_summary2d
+stat_bin2d        stat_density2d    stat_quantile     stat_summary_hex
+stat_bindot       stat_ecdf         stat_smooth       stat_unique
+stat_binhex       stat_function     stat_spoke        stat_vline
+stat_boxplot      stat_hline        stat_sum          stat_ydensity
+
+ggplot(small)+geom_bar(aes(x=cut, fill=cut))+coord_flip() #coord_flip实现坐标翻转
+coord_polar(theta="y") #转换成极坐标 这时会出现饼图
+ggplot(small)+geom_bar(aes(x=factor(1), fill=cut))+coord_polar() #靶心图
+ggplot(small)+geom_bar(aes(x=clarity, fill=cut))+coord_polar() #风玫瑰图
+ggplot(small, aes(x=carat, y=price))+geom_point(aes(colour=cut)
+)+scale_y_log10() +facet_wrap(~cut)+stat_smooth()    #facet_wrap 用来分组
+
+ggtitle(),xlab(),ylab() #标题
+theme_economist theme_economist_white # 一些系统给到的主题
+theme_wsj 	 	theme_excel
+theme_few 	 	theme_foundation
+theme_igray 	theme_solarized
+theme_stata 	theme_tufte
+
+
+
 
 
 
