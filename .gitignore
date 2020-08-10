@@ -147,7 +147,7 @@ p<-ggplot(data=df,mapping=aes(x=col,t=col,shape=col,colour=col))#shape可以将�
 p+geom_point() #散点图
 p<-ggplot(df)
 p+geom_point(aes(x=col,t=col,shape=col,colour=col)) #与之前的两步结果一样
-ggplot(df)+geom_histogram(aes(x=col,fill=col),position="col") #直方图，其中fill为填充颜色，position为分为side by side
+ggplot(df)+geom_histogram(aes(x=col,fill=col),position="") #直方图，其中fill为填充颜色，position为分为side by side
 ggplot()+geom_bar(aes(x=c(LETTERS[1:3]),y=1:3), stat="identity") #柱状图 stat使按照指定高度画图
 ggplot()+geom_density(aes(x=col, colour=col,fill=col)) #密度函数图
 ggplot(small)+geom_boxplot(aes(x=cut, y=price,fill=color)) #箱式图
@@ -196,6 +196,44 @@ theme_few 	 	theme_foundation
 theme_igray 	theme_solarized
 theme_stata 	theme_tufte
 
+######String manipulations---字符串操作
+str_count(x,pattern)
+str_delet(x,pattern)
+str_locate() str_locate_all()
+str_extract()
+str_match()
+str_replace(x,pattern,replacement)
+str_split(x,pattern)  str_split_fixed(x,pattern)
+
+pacman::p_load(tidyverse,rebus,stringdist)
+#rebus: SPC:\\s  DOT:.  START:^  END:$  DGT:\\d ALPHA: [:alpha:]
+str_to_lower(x)
+str_to_upper()
+str_squish() #恢复原值
+str_detect(x,pattern)
+
+p=or('p','k')%R% END # (?:p|k)$
+str_which(x,pattern=o) #显示位置
+str_subset(x,pattern=p,negate=T) # negate 表示除了满足P以外的，显示的是元素
+
+#数字为’219 733 8965' ‘234.252.3633'
+p1= DGT %R% DGT %R% DGT
+p2= DGT %R% DGT %R% DGT
+p3= DGT %R% DGT %R% DGT %R%
+sep = or(" ”,“.","-","")
+ptrn=p1 %R% sep %R% p2 %R% sep %R% p3
+
+str_match(x,pattern=ptrn) # 清洗不干净的数据
+sep=char_class('.-')
+str_replace_all(nums,pattern=sep,replacement="") #把"."也清洗掉
+
+values=c('male','M','amle',Female','Femle') 
+correct_values= c('M','F')  
+
+adist()  #native packages
+amatch()  #Stringdist package
+ind= amatch(values,correct_values,maxDist=5)
+df=data.frame(initial = values,new_gender = correct_values[ind])  #会将values里的值自动更正为”M“
 
 
 
