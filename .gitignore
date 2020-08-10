@@ -313,12 +313,13 @@ dim(outliers)
 cars_new = filter(cars, !(abs(Price - median(Price)) > 2*sd(Price))) #去除outliers
 dim(cars_new)
 
+#replace values
 qnt = quantile(cars$Price, probs=c(.25, .75), na.rm = T) 
 cap = quantile(cars$Price, probs=c(.05, .95), na.rm = T)
 Th = 1.5 * IQR(cars$Price, na.rm = T)
 cars$cap_price = 0
 cars$cap_price = ifelse((cars$Price < (qnt[1] - Th)), cap[1], cars$Price)
-cars$cap_price = ifelse((cars$Price > (qnt[2] + Th)), cap[2], cars$Price)
+cars$cap_price = ifelse((cars$Price > (qnt[2] + Th)), cap[2], cars$Price)  #set upper and lower bounds
 
 cap
 qnt
@@ -329,7 +330,8 @@ dim(cars)
 options(repr.plot.width=12, repr.plot.height=8) #设置环境变量
 linear_model = lm(Price ~ ., data=cars) #线性模型
 c_dist = cooks.distance(linear_model)  #库克距离：描述单个样本对整个模型的影响程度，越远影响越大，为outliers，一般为多变量
-abline(h = 4*mean(c_dist, na.rm=T), col="red")  #add cutoff line
+plot(c_dist, pch="*", cex=2, main="Influential Obs by Cooks distance") #plot cook's distance
+abline(h = 4*mean(c_dist, na.rm=T), col="red")  #add cutoff line 
 text(x=1:length(c_dist)+1, y=c_dist,labels=ifelse(c_dist>4*mean(c_dist, na.rm=T
 ),names(c_dist),""), col="red")  # add labels
 
