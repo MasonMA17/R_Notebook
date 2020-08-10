@@ -227,7 +227,7 @@ str_match(x,pattern=ptrn) # 清洗不干净的数据
 sep=char_class('.-')
 str_replace_all(nums,pattern=sep,replacement="") #把"."也清洗掉
 
-values=c('male','M','amle',Female','Femle') 
+# values=c('male','M','amle',Female','Femle') 
 correct_values= c('M','F')  
 
 adist()  #native packages
@@ -236,15 +236,112 @@ ind= amatch(values,correct_values,maxDist=5)
 df=data.frame(initial = values,new_gender = correct_values[ind])  #会将values里的值自动更正为”M“
 
 
+#####Consistent Data
+duplicated(x) 
+anyDuplicated()  #返回true值
+x[!duplicated(x)] #去除重复值
+distinct()
+unique()
+
+##Data Imputation
+#Impute Missing Data
+is.na(),is.nan(),is.infinity()
+md.pattern() #mice package-examine the missing pattern ---other packages: mice,mi,Amelia
+
+##例子
+cars=read.csv('cars_missing.csv')
+original=read.csv('cars.csv')
+
+lapply(list(cars,original),summary)
+cols=c('MetColor','Automatic','Doors')
+cars[,cols]=lapply(cars[,cols],factor)  #设置分类函数
+summary(cars)
+#examine missing patterns
+pacman::p_load(tidyverse,VIM,mice,Hmisc,DMwR)
+library("mi")
+library("Amelia")
+library("mice")
+md.pattern(cars)  #examine the missing pattern
+df=as.data.frame(abs(is.na(cars)))
+head(df,4)
+
+#用图形探究
+aggr(sleep,prop=FALSE,numbers=TRUE) #prop当为TRUE时，显示为缺失值的占比；当为FALSE时，显示为缺失值的数量
+#numbers:是否显示数值，默认为FALSE，不显示缺失值的占比或数量
+marginplot(sleep[,c('Gest','Dream')],pch = c(20,1),col=c('darkgray','red','blue')) #散点图 红色箱图表示包含插补值之后的分布，灰色箱图表示有效点的分布。红色的空心点是插补之后的点。
+
+
+#correaltion of missing with othor columns
+missing_col=df[which(apply(df,2,sum)>0)]
+cor(missing_col)  # look for correlation between columns with missing values to see if there is any further link
+cor(cars[,sapply(cars,is.numeric)],missing_col,use = "pairwise.complete.obs") #行是可观测，列为缺失
+#MCAR:missing completely at random MAR:missing at random  MNAR: missing not at random
+
+#impute using central tendency
+mean_imp=impute(cars$HP,mean)
+mode_imp=impute(cars$MetColor,mode)
+mice_imput=mice(cars[,!names(cars)%in% "Price"])  #填补missing data
+mice_imput
+m_out=complete(mice_imput) #for 2nd dataset use complete(mice_imput,2)
+dim(m_out)
+colMeans(is.na(m_out))  #最后看看有没有缺失值
+
+#accuracy?
+actuals=original$HP[is.na(cars$HP)] 
+imputed=mean_imp[is.na(cars$HP)]
+regr.eval(actuals,imputed) #结果为: mae mse rmse mape
+# MSE: mean square error(均方误差）RMSE：前者加上了根号 MAE:mean absolute error（平均绝对误差）
+#MAPE: mean absolute percentage error(平均绝对百分比误差）
+
+#for categorical
+actuals=original$MetColor[is.na(cars$MetColor)]
+imputed=mode_imp[is.na(cars$MetColor)] #the 1st method
+imputed=m_out[is.na(cars$MetColor),"MetColor"] ##the 2nd method
+prop.table(table(actuals,imputed))  #用来比较真实与预测的误差
 
 
 
+####去除outliers
+pacman::p_load(tidyverse, DMwR)
+cars = read.csv('cars.csv')
+ggplot(cars,aes(Price)) + geom_histogram() #when negative distribution,we use 'log', when positive distribution,we use 'square'
+ggplot(cars,aes(log(Price))) + geom_histogram() #use log
 
+outliers = filter(cars, (abs(Price - median(Price)) > 2*sd(Price))) #确定outliers
+dim(outliers)
 
+cars_new = filter(cars, !(abs(Price - median(Price)) > 2*sd(Price))) #去除outliers
+dim(cars_new)
 
+qnt = quantile(cars$Price, probs=c(.25, .75), na.rm = T) 
+cap = quantile(cars$Price, probs=c(.05, .95), na.rm = T)
+Th = 1.5 * IQR(cars$Price, na.rm = T)
+cars$cap_price = 0
+cars$cap_price = ifelse((cars$Price < (qnt[1] - Th)), cap[1], cars$Price)
+cars$cap_price = ifelse((cars$Price > (qnt[2] + Th)), cap[2], cars$Price)
 
+cap
+qnt
 
+summary(cars)
+dim(cars)
 
+options(repr.plot.width=12, repr.plot.height=8) #设置环境变量
+linear_model = lm(Price ~ ., data=cars) #线性模型
+c_dist = cooks.distance(linear_model)  #库克距离：描述单个样本对整个模型的影响程度，越远影响越大，为outliers，一般为多变量
+abline(h = 4*mean(c_dist, na.rm=T), col="red")  #add cutoff line
+text(x=1:length(c_dist)+1, y=c_dist,labels=ifelse(c_dist>4*mean(c_dist, na.rm=T
+),names(c_dist),""), col="red")  # add labels
 
+influential = as.numeric(names(c_dist)[(c_dist > 4*mean(c_dist, na.rm=T))])  # look at influential row numbers
+head(cars[influential, ])
+dim(cars[influential, ])
+dim(cars[-influential, ])
+
+##异常因子检测
+str(cars)
+scores = lofactor(cars[, sapply(cars, is.numeric)], k =5) #lof :local outlier factor 检测cars中属于numeric的列（因为只对numeric数据有效
+plot(density(scores))
+outliers = order(scores, decreasing=T)[1:5] #挑出前五的异常值
 
 
