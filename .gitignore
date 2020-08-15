@@ -280,7 +280,7 @@ cor(cars[,sapply(cars,is.numeric)],missing_col,use = "pairwise.complete.obs") #�
 #impute using central tendency
 mean_imp=impute(cars$HP,mean)
 mode_imp=impute(cars$MetColor,mode)
-mice_imput=mice(cars[,!names(cars)%in% "Price"])  #填补missing data
+mice_imput=mice(cars[,!names(cars)%in% "Price"])  #填补missing data 排除price是因为它不适合做自变量进行拟合。
 mice_imput
 m_out=complete(mice_imput) #for 2nd dataset use complete(mice_imput,2)
 dim(m_out)
