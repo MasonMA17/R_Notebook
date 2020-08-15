@@ -347,3 +347,143 @@ plot(density(scores))
 outliers = order(scores, decreasing=T)[1:5] #挑出前五的异常值
 
 
+###################################
+##### Time series
+pacman::p_load(forecast,tseries,fUnitRoots,tidyverse, lmtest,fastDummies)
+
+data%>%ggplot(aes(x=t,y=Hotel.Occupancy..Y.))+geom_line() #画线图
+data$transY=(data$Hotel.Occupancy..Y.)**0.25  ## Change increasing to constant seasonality
+data%>%ggplot(aes(x=t,y=transY))+geom_line()
+
+#model1 自动生成的dummy variables
+model1 = lm(transY ~ t+Month, data=data)  #create dummy variables automatically as Month is 'character' type
+data$predicted = (model1$fitted.values)**4  #get back original Y
+
+ggplot(data, aes(t)) +
+geom_line(aes(y = Hotel.Occupancy..Y., colour = "actual")) +
+geom_line(aes(y = predicted, colour = "predicted"))          # compare predicted and actual
+
+#model2 手动创造的dummy variables
+df = fastDummies::dummy_cols(data)  #create dummy variables beforehand
+head(df,4)   #Dec month coefficients are NA, hence 12 months only 11 dummy variables
+model2 = lm(transY ~ t+Month_Jan +Month_Feb+Month_Mar+Month_Apr+
+Month_May+Month_Jun+Month_Jul+Month_Aug+
+Month_Sep+Month_Oct+Month_Nov+Month_Dec, data=df)
+summary(model2)
+
+# compare the predictions from the 2 models
+cbind(head(model1$fitted.values,5),head(model2$fitted.values,5))  #same result
+
+
+#######smoothing techniques
+SnP = read.csv('SnP500Monthly.csv')
+Electricity = read.csv('Electricity.csv')
+head(SnP)
+head(Electricity)
+
+#plot the graphs
+closePrice=SnP$Close
+electricityUsed=Electricity$Electricity.Consumed
+plot(closePrice,type = "o") # there is trend component, no seasonality
+plot(electricityUsed,type = "o") #there is both trend and seasonality
+
+#convert datasets into Time Series data format for processing
+tsClosePrice = ts(closePrice, frequency = 12, start = c(1995, 1))
+tsClosePrice
+tsElectricityUsed = ts(electricityUsed, frequency = 12, start = c(2005, 1))
+tsElectricityUsed
+
+#Holts method for trend prediction
+tsClosePrice1 <- holt(tsClosePrice,h=12)  #从图中看tsClosePrice1没有SN,选用holts 只考虑trend
+autoplot(forecast(tsClosePrice1))
+summary(tsClosePrice1)
+
+#Simple Exponential Smoothing. What is the performance? 
+SES_tsElectricityUsed <- ses(tsElectricityUsed, alpha = .7, h = 12) #forecast 12 points forward
+autoplot(SES_tsElectricityUsed)
+summary(SES_tsElectricityUsed)
+
+#Holts method. What is the performance? 
+holt_tsElectricityUsed <- holt(tsElectricityUsed,h=12)
+autoplot(forecast(holt_tsElectricityUsed))
+summary(holt_tsElectricityUsed)
+
+#Holts-Winter method. What is the performance?  ---Electricity 有sn,所以用holts-winter是最好的
+holt_winter_tsElectricityUsed <- hw(tsElectricityUsed,h=12)
+autoplot(forecast(holt_winter_tsElectricityUsed))
+summary(holt_winter_tsElectricityUsed)
+
+#########Decomposition,ARIMA & SARIMA 
+series = read.csv('AmtrakBig_raw.csv')
+head(series, n=4)
+# lag plots
+gglagplot(series$Ridership,set.lags = 1:12,do.lines = FALSE) ##能够看出是否有SN，此图里看出SN 周期为12
+
+# check whether the data type is a ts object
+is.ts(series$Ridership)
+Rider = ts(series$Ridership, frequency = 12, start = c(1991, 1))#converting it into TS object
+Rider
+is.ts(Rider) # check the datatype again
+autoplot(Rider) # There is trend and seasonality
+
+# Using the decomposition function in R 
+decompTrainD = decompose(Rider,type = c("additive"))
+plot(decompTrainD, lwd=2, col="blue")
+#NOTE, currently in R, decomposition does NOT perform prediction automatically using the function#
+
+# AR using ARIMA
+arima_100 = arima(Rider, order=c(1,0,0))
+arima_100
+# forecast the next 12 values
+forecasted_values = forecast(arima_100, 12)
+forecasted_values
+# visual inspection of forecast
+autoplot(forecasted_values, lwd=8)
+
+# MA using ARIMA
+arima_001 = arima(Rider, order=c(0,0,1))
+arima_001
+# forecast the next 12 values
+forecasted_values = forecast(arima_001, 12)
+forecasted_values
+# visual inspection of forecast
+autoplot(forecasted_values, lwd=8)
+
+#Set train and test range
+training = subset(Rider, end=length(Rider)-27)# first 132 values (11 yrs)
+test = subset(Rider, start=length(Rider)-26) # start from 133 value till end of series (about 2 years plus)
+
+#perform first order normal differencing
+training %>% diff()%>% ggtsdisplay()  #会出现ACF和PACF图
+# take an additional seasonal difference
+training %>% diff()%>% diff(lag = 12)%>% ggtsdisplay()
+# take an additional seasonal difference
+training %>% diff()%>% diff(lag = 12)%>% diff(lag = 12)%>% ggtsdisplay()
+# makes it worse so we go back to 1 seasonal diff
+
+#let's try AR-1 and MA-1 for both normal and seasonal
+model_train_sea = Arima(training, order = c(1,1,1), seasonal=c(1,1,1))
+summary(model_train_sea)
+coeftest(model_train_sea)
+
+# model tuning
+model_train_sea = Arima(training, order = c(1,1,1), seasonal=c(0,1,1))
+summary(model_train_sea)
+coeftest(model_train_sea)
+
+checkresiduals(model_train_sea)
+pacf(model_train_sea$residuals, lag = 36)
+
+# use this model on the test set
+model_train_sea %>% forecast(h = 27) %>% autoplot() + autolayer(test) #test is the actual test data
+
+pred_test_sea = Arima(test, model = model_train_sea)
+accuracy(pred_test_sea)
+
+# Using Auto-ARIMA to complement mannual tuning
+
+fitAutoArima = auto.arima(training)
+fitAutoArima
+coeftest(fitAutoArima) # p values
+checkresiduals(fitAutoArima)
+
