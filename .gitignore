@@ -487,3 +487,133 @@ fitAutoArima
 coeftest(fitAutoArima) # p values
 checkresiduals(fitAutoArima)
 
+
+#######################
+###### Neural Network_MLP(multiple layer perceptron
+
+## Method one
+#title: "Demo: neural networks for failure prediction"
+#output: html_document
+
+library(neuralnet)
+library(tictoc)
+
+##### Load data
+dfTrain <- read.csv(file = "demo_failue_prediction_train.csv", header=TRUE, stringsAsFactors = FALSE, na.strings = "na" )
+dfTest <- read.csv(file = "demo_failue_prediction_test.csv", header=TRUE, stringsAsFactors = FALSE, na.strings = "na" )
+
+#### Pre-process data
+dim(dfTrain)
+
+#clean the NA in the original CSV data
+dfTrain[is.na(dfTrain)] <- 0    
+dfTest[is.na(dfTest)] <- 0
+
+# Scale the Data using the max-min rule
+normalize <- function(x) {return ((x - min(x)) / (max(x) - min(x)))} 
+dfTrain[2:ncol(dfTrain)] <- lapply(dfTrain[2:ncol(dfTrain)], normalize)
+dfTest[2:ncol(dfTest)] <- lapply(dfTest[2:ncol(dfTest)], normalize)
+
+# Clean the NA in the normalization (max(x)==min(x))
+dfTrain[is.na(dfTrain)] <- 0
+dfTest[is.na(dfTest)] <- 0
+
+# Convert class to be integer
+dfTrain$class <- as.integer(dfTrain$class=="pos")
+dfTest$class <- as.integer(dfTest$class=="pos")
+table(dfTrain$class)
+table(dfTest$class)
+
+#### Train neural network
+param_nodes_hidden_layer <- c(5,4,2) # No. of nodes at each hidden layer
+param_max_iteration <- 1e5           # No. of iterations in training
+param_learning_rate <- 0.01          # the learning rate during back propagation
+dfTrainSub <- dfTrain
+
+# combine the attributes name for the convenience
+names <- colnames(dfTrainSub)
+f <- as.formula(paste("class ~", paste(names[!names %in% "class"], collapse = " + ")))
+
+tic("Neural network training")
+nnmodel <- neuralnet(f, data = dfTrainSub, hidden=param_nodes_hidden_layer, 
+stepmax=param_max_iteration, learningrate = param_learning_rate, linear.output=FALSE) #linear.output=FALSE means this is classification problem, as required by neuralnet package
+toc()
+plot(nnmodel)
+print("NN model training is finished")
+
+### Perform prediction, convert to be binary output
+mypredict <- compute(nnmodel, dfTest[,2:ncol(dfTest)])$net.result
+mypredict <- sapply(mypredict, round, digits=0)
+
+# Display confusion matrix
+results = data.frame(actual = dfTest$class, prediction = mypredict)
+table(results)
+
+
+#### Method two
+#Installation guideline
+install.packages("keras")
+library(keras)
+install_keras(tensorflow="1.13.1")
+is_keras_available()
+
+# Load data from the CSV file
+data_train_orig = read.csv(file="demo_failue_prediction_train.csv", header=TRUE, stringsAsFactors=FALSE, na.strings="na" )
+data_test_orig = read.csv(file="demo_failue_prediction_test.csv", header=TRUE, stringsAsFactors=FALSE, na.strings="na" )
+
+# Data cleaning by set 'na' to be zero
+data_train_orig[is.na(data_train_orig)] = 0
+data_test_orig[is.na(data_test_orig)] = 0
+str(data_train_orig)
+str(data_test_orig)
+
+x_train_orig = data_train_orig[,2:ncol(data_train_orig)]
+y_train_orig = data_train_orig[,1,drop=FALSE]
+x_test_orig = data_test_orig[,2:ncol(data_test_orig)]
+y_test_orig = data_test_orig[,1,drop=FALSE]             #将自变量和因变量区分到两个表
+
+dim(x_train_orig)
+dim(y_train_orig)
+
+# Perfor normalization on neumerical data
+x_train = scale(x_train_orig)
+col_means_x_train = colMeans(x_train_orig)
+col_stds_x_train = apply(x_train_orig, 2, sd)
+x_test = scale(x_test_orig, center = col_means_x_train, scale = col_stds_x_train)
+
+# Perform one-hot encoding for category data
+y_train = to_categorical(as.matrix(y_train_orig=="pos"), num_classes = 2)
+y_test = to_categorical(as.matrix(y_test_orig=="pos"), num_classes = 2)
+dim(y_train)
+dim(y_test)
+
+# Creating the sequential model
+model = keras_model_sequential() %>%   
+  layer_dense(units = 10, activation = "relu", input_shape = ncol(x_train)) %>%
+  layer_dense(units = 4, activation = "relu") %>%
+  layer_dense(units = ncol(y_train), activation = "sigmoid")
+
+summary(model)
+
+y_temp = as.matrix(y_train_orig=="pos")
+weight0 = length(y_temp)/(length(y_temp)-sum(y_temp))
+weight1 = length(y_temp)/sum(y_temp)
+
+# Train model
+compile(model, loss = "binary_crossentropy", optimizer = optimizer_sgd(), metrics = "accuracy")
+history = fit(model, data.matrix(x_train), data.matrix(y_train), epochs = 20, batch_size = 100, verbose = 1, class_weight=list("0"=weight0,"1"=weight1))
+
+# Get the prediction score
+y_pred = predict(model, x_test)
+dim(y_pred)
+
+# Get the prediction class
+y_pred_class = predict_classes(model, x_test)
+
+# Generate confusion matrix
+y_test_class = as.vector(y_test_orig=="pos")
+table(y_test_class, y_pred_class)
+
+sprintf("Accuracy: %.4f %%", mean(y_test_class == y_pred_class)*100)
+
+
